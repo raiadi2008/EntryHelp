@@ -17,11 +17,13 @@ import { Ionicons, FontAwesome } from "@expo/vector-icons";
 import { Keyboard } from "react-native";
 import { db, auth } from "../firebase";
 import * as firebase from "firebase";
-import { Button } from "react-native-elements";
+import { Button, Image } from "react-native-elements";
+import * as ImagePicker from 'expo-image-picker';
 
 const ChatScreen = ({ navigation, route }) => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
+  const [image, setImage] = useState("");
 
   const sendMessage = () => {
     Keyboard.dismiss();
@@ -29,15 +31,16 @@ const ChatScreen = ({ navigation, route }) => {
     if (input && input !== "\n") {
       db.collection("chats").doc(route.params.id).collection("messages").add({
         timestamp: firebase.default.firestore.FieldValue.serverTimestamp(),
-        messageType: "message",
         message: input,
         displayName: auth.currentUser.displayName,
+        visitorImage: image,
         email: auth.currentUser.email,
         photoURL: auth.currentUser.photoURL,
       });
     }
 
     setInput("");
+    setImage("");
 
     scrollDownFunc();
   };
@@ -115,6 +118,43 @@ const ChatScreen = ({ navigation, route }) => {
     scrollDownFunc();
   }, [navigation, messages]);
 
+  const selectImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [3, 5],
+      quality: 1,
+    });
+
+
+    if (!result.cancelled) {
+      setImage(result.uri);
+    }
+  };
+
+  const acceptVisitor = () => {
+    Keyboard.dismiss();
+      db.collection("chats").doc(route.params.id).collection("messages").add({
+        timestamp: firebase.default.firestore.FieldValue.serverTimestamp(),
+        message: "please accept the visitor",
+        displayName: auth.currentUser.displayName,
+        email: auth.currentUser.email,
+        photoURL: auth.currentUser.photoURL,
+      });
+    scrollDownFunc();
+  };
+
+  const rejectVisitor = () => {
+      db.collection("chats").doc(route.params.id).collection("messages").add({
+        timestamp: firebase.default.firestore.FieldValue.serverTimestamp(),
+        message: "reject the visitor",
+        displayName: auth.currentUser.displayName,
+        email: auth.currentUser.email,
+        photoURL: auth.currentUser.photoURL,
+      });
+    scrollDownFunc();
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
       <StatusBar style="light" />
@@ -142,6 +182,20 @@ const ChatScreen = ({ navigation, route }) => {
                       size={24}
                       source={{ uri: data.photoURL }}
                     />
+                    {
+                      data.visitorImage ?  
+                      (
+                        <View>
+                          <Image
+                            source={{
+                              uri:data.visitorImage,
+                            }}
+                            style={{ width: 200, height: 300 }}
+                          />
+                        </View>
+                      ) :  <Text></Text>
+
+                    }
                     <Text style={styles.senderText}>{data.message}</Text>
                   </View>
                 ) : (
@@ -155,6 +209,24 @@ const ChatScreen = ({ navigation, route }) => {
                       source={{ uri: data.photoURL }}
                     />
                     <Text style={styles.recieverName}>{data.displayName}</Text>
+                    {
+                      data.visitorImage ?  
+                      (
+                        <View>
+                          <Image
+                            source={{
+                              uri:data.visitorImage,
+                            }}
+                            style={{ width: 200, height: 300 }}
+                          />
+                          <View>
+                            <Button containerStyle={styles.button} title="Accept" onPress={acceptVisitor} />
+                            <Button containerStyle={styles.button} title="Reject" onPress={rejectVisitor} />
+                          </View>
+                        </View>
+                      ) :  <Text></Text>
+
+                    }
                     <Text style={styles.recieverText}>{data.message}</Text>
                   </View>
                 )
@@ -164,7 +236,7 @@ const ChatScreen = ({ navigation, route }) => {
               <TextInput
                 value={input}
                 onChangeText={(text) => setInput(text)}
-                placeholder="Enter message"
+                placeholder="Enter Message"
                 onSubmitEditing={sendMessage}
                 onFocus={scrollDownDelayed}
                 style={styles.textInput}
@@ -173,7 +245,9 @@ const ChatScreen = ({ navigation, route }) => {
                 <Ionicons name="send" size={24} color="#2B68E6" />
               </TouchableOpacity>
             </View>
-            <Button title="Add Visitor" containerStyle={styles.button} />
+            <TouchableOpacity style={styles.selectImage} onPress={selectImage}>
+              <Text style={{ color: "white", alignSelf: "center" }}>Add Visitor</Text>
+            </TouchableOpacity>
           </>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -240,9 +314,17 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   button: {
-    marginTop: 5,
-    marginBottom: 5,
-    marginLeft: 10,
-    marginRight: 10,
+    margin: 5
   },
+  selectImage: {
+    width: 310,
+    alignSelf: 'center',
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 25,
+    color: "white",
+    backgroundColor: '#FF6C6C',
+    borderColor: "transparent"
+  }
 });
